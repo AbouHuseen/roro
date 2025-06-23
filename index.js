@@ -16,21 +16,19 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// User model
+// User Schema
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true }
 });
-
 const User = mongoose.model('User', userSchema);
 
-// Exercise model
+// Exercise Schema
 const exerciseSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
   description: { type: String, required: true },
   duration: { type: Number, required: true },
   date: { type: Date, required: true }
 });
-
 const Exercise = mongoose.model('Exercise', exerciseSchema);
 
 // Home route
@@ -38,10 +36,9 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
 
-// Create new user
+// POST /api/users — Create new user
 app.post('/api/users', async (req, res) => {
   const { username } = req.body;
-
   try {
     if (!username) return res.status(400).json({ error: 'Username is required' });
 
@@ -57,10 +54,12 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// Get all users
+// GET /api/users — Get all users
 app.get('/api/users', async (req, res) => {
   try {
-    const users = await User.find({}, '_id username');
+    const users = await User.find({}, '_id username').lean();
+    // Lean() returns plain JS objects instead of Mongoose docs, useful for mapping
+
     res.json(users.map(user => ({
       username: user.username,
       _id: user._id.toString()
@@ -70,7 +69,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// Add exercise
+// POST /api/users/:_id/exercises — Add exercise
 app.post('/api/users/:_id/exercises', async (req, res) => {
   const userId = req.params._id;
   const { description, duration, date } = req.body;
@@ -83,7 +82,10 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const exerciseDate = date ? new Date(date) : new Date();
+    // Use provided date or current date if missing
+    let exerciseDate = date ? new Date(date) : new Date();
+    // If date is invalid, fallback to current date
+    if (exerciseDate.toString() === 'Invalid Date') exerciseDate = new Date();
 
     const exercise = new Exercise({
       userId,
@@ -98,7 +100,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
       username: user.username,
       description: savedExercise.description,
       duration: savedExercise.duration,
-      date: savedExercise.date.toDateString(), // Required string format
+      date: savedExercise.date.toDateString(), // string format
       _id: user._id.toString()
     });
   } catch (err) {
@@ -106,7 +108,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
   }
 });
 
-// Get exercise logs
+// GET /api/users/:_id/logs — Get exercise logs with optional filters
 app.get('/api/users/:_id/logs', async (req, res) => {
   const userId = req.params._id;
   const { from, to, limit } = req.query;
@@ -117,16 +119,23 @@ app.get('/api/users/:_id/logs', async (req, res) => {
 
     let query = { userId };
 
+    // Date filtering
     if (from || to) {
       query.date = {};
-      if (from) query.date.$gte = new Date(from);
-      if (to) query.date.$lte = new Date(to);
+      if (from) {
+        const fromDate = new Date(from);
+        if (fromDate.toString() !== 'Invalid Date') query.date.$gte = fromDate;
+      }
+      if (to) {
+        const toDate = new Date(to);
+        if (toDate.toString() !== 'Invalid Date') query.date.$lte = toDate;
+      }
     }
 
     let exercisesQuery = Exercise.find(query).select('description duration date');
     if (limit) exercisesQuery = exercisesQuery.limit(Number(limit));
 
-    const exercises = await exercisesQuery;
+    const exercises = await exercisesQuery.exec();
 
     res.json({
       username: user.username,
@@ -143,7 +152,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
   }
 });
 
-// Start the server
+// Start server
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port);
 });
