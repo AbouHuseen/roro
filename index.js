@@ -1,4 +1,3 @@
-// index.js
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -9,21 +8,22 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.static('public'));
-app.use(express.urlencoded({ extended: false })); 
-app.use(express.json()); 
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 
-
+// اتصال بقاعدة البيانات
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-
+// نموذج المستخدم
 const userSchema = new mongoose.Schema({
-  username: { type: String, required: true }
+  roro: { type: String, required: true } // تغيير اسم الحقل إلى roro
 });
 
 const User = mongoose.model('User', userSchema);
 
+// نموذج التمارين
 const exerciseSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
   description: { type: String, required: true },
@@ -33,19 +33,16 @@ const exerciseSchema = new mongoose.Schema({
 
 const Exercise = mongoose.model('Exercise', exerciseSchema);
 
-// Routes
-
-
+// الراوت الرئيسي
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html');
 });
 
-
+// إنشاء مستخدم جديد
 app.post('/api/users', async (req, res) => {
-  console.log("username",roro);
-  const { username } = req.body;
+  const { roro } = req.body;
   try {
-    if (!roro) return res.status(400).json({ error: 'roro' });
+    if (!roro) return res.status(400).json({ error: 'roro is required' });
 
     const user = new User({ roro });
     const savedUser = await user.save();
@@ -59,12 +56,12 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-
+// جلب كل المستخدمين
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find({}, '_id roro');
     const formattedUsers = users.map(u => ({
-      username: u.username,
+      roro: u.roro,
       _id: u._id.toString()
     }));
     res.json(formattedUsers);
@@ -73,14 +70,15 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-
+// إضافة تمرين لمستخدم
 app.post('/api/users/:_id/exercises', async (req, res) => {
   const userId = req.params._id;
   const { description, duration, date } = req.body;
 
   try {
-    if (!description || !duration) 
+    if (!description || !duration) {
       return res.status(400).json({ error: 'Description and duration are required' });
+    }
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -97,7 +95,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
     const savedExercise = await exercise.save();
 
     res.json({
-      username: user.username,
+      roro: user.roro,
       description: savedExercise.description,
       duration: savedExercise.duration,
       date: savedExercise.date.toDateString(),
@@ -108,7 +106,7 @@ app.post('/api/users/:_id/exercises', async (req, res) => {
   }
 });
 
-
+// جلب سجل التمارين
 app.get('/api/users/:_id/logs', async (req, res) => {
   const userId = req.params._id;
   const { from, to, limit } = req.query;
@@ -131,7 +129,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
     const exercises = await exercisesQuery;
 
     res.json({
-      username: user.username,
+      roro: user.roro,
       count: exercises.length,
       _id: user._id.toString(),
       log: exercises.map(ex => ({
@@ -145,7 +143,7 @@ app.get('/api/users/:_id/logs', async (req, res) => {
   }
 });
 
-
+// تشغيل السيرفر
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port);
 });
