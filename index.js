@@ -45,7 +45,7 @@ app.post('/api/users', async (req, res) => {
   console.log("username",roro);
   const { username } = req.body;
   try {
-    if (!roro) return res.status(400).json({ error: 'fcc-exercise-tracker' });
+    if (!roro) return res.status(400).json({ error: 'roro' });
 
     const user = new User({ roro });
     const savedUser = await user.save();
