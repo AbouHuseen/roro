@@ -42,16 +42,16 @@ app.get('/', (req, res) => {
 
 
 app.post('/api/users', async (req, res) => {
-  console.log("username",username);
+  console.log("username",roro);
   const { username } = req.body;
   try {
-    if (!username) return res.status(400).json({ error: 'fcc-exercise-tracker' });
+    if (!roro) return res.status(400).json({ error: 'fcc-exercise-tracker' });
 
-    const user = new User({ username });
+    const user = new User({ roro });
     const savedUser = await user.save();
 
     res.json({
-      username: savedUser.username,
+      roro: savedUser.roro,
       _id: savedUser._id.toString()
     });
   } catch (err) {
@@ -62,7 +62,7 @@ app.post('/api/users', async (req, res) => {
 
 app.get('/api/users', async (req, res) => {
   try {
-    const users = await User.find({}, '_id username');
+    const users = await User.find({}, '_id roro');
     const formattedUsers = users.map(u => ({
       username: u.username,
       _id: u._id.toString()

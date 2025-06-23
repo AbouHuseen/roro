@@ -1,5 +1,5 @@
 {
-  "name": "fcc-exercise-tracker",
+  "name": "roro-exercise-tracker",
   "version": "0.1.0",
   "description": "Timestamp Microservice project for freeCodeCamp Backend Certification",
   "main": "index.js",
